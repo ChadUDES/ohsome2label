@@ -16,7 +16,7 @@ with io.open('ohsome2label/readme.md') as f:
 
 setup(
     name='ohsome2label',
-    version='1.1.2',
+    version='1.1.3',
     packages=find_packages(),
     author='Zhaoyan Wu, Hao Li',
     author_email='zhaoyan_wu@whu.edu.cn, hao.li@uni-heidelberg.de',
@@ -32,7 +32,7 @@ setup(
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3.6'
+        'Programming Language :: Python :: 3.10.12'
     ],
     python_requires=">=3.6",
     py_module=['main'],

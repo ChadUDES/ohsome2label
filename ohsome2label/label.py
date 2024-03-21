@@ -6,6 +6,7 @@ import geojson
 from geojson import FeatureCollection
 from PIL import Image, ImageDraw
 from shapely.geometry import MultiPolygon, Polygon, box, shape
+from shapely.geometry import LineString
 from shapely.strtree import STRtree
 from tqdm import tqdm
 
@@ -77,6 +78,23 @@ def parse_polygon(coordinates, trans, nx=256, ny=256):
     return Polygon(exterior, interiors).buffer(0)
 
 
+from shapely.geometry import LineString
+
+def parse_linestring(coordinates, trans, nx=256, ny=256):
+    """parse linestring
+
+    :param coordinates: wgs84 coordinates
+    :param trans: translation to get image-based coordinate system coordinate
+    :param nx: image width
+    :param ny: image length
+    """
+    # Convert coordinates to tuples and apply transformation
+    coordinates = [xy(*coord) for coord in coordinates]
+    coordinates = apply_transform(coordinates, trans)
+
+    return LineString(coordinates)
+
+
 def check_topo(feats, tile, nx=256, ny=256):
     """check features geometry, due to coco cannot recognize segmentation with
        holes, return sorted list of (geometry, label) tuple
@@ -89,7 +107,7 @@ def check_topo(feats, tile, nx=256, ny=256):
     trans = tile_get_transform(tile, nx, ny)
     bbox = box(0, 0, 255, 255)
 
-    # geoms element is (geometry, label) tuple
+    #geoms element is (area, geometry, label) tuple
     geoms = []
 
     # construct tile-based coordinate-system shapely geometry
@@ -98,30 +116,45 @@ def check_topo(feats, tile, nx=256, ny=256):
         idx += 1
         geometry = feat["geometry"]
         label = feat["properties"]["label"]
+        
         if geometry["type"] == "Polygon":
             coordinates = geometry["coordinates"]
+            #print(coordinates) #[[[-73.655996, 45.479392], [-73.655993, 45.484091]...]]
             poly = parse_polygon(coordinates, trans, nx, ny)
+            #print(poly) #POLYGON ((-1359.084629334342 255.0028836995265, ...))
             geoms.append((poly.area, poly, label))
-        elif feat["geometry"]["type"] == "MultiPolygon":
-            coordinates = geometry["coordinates"]
-            try:
-                poly = MultiPolygon(
-                    [parse_polygon(coords, trans, nx, ny) for coords in coordinates]
-                )
-                geoms.append((poly.area, poly, label))
-            except Exception:
-                assert 0
+            #print(geoms) [(1589201.2649204314, <shapely.geometry.polygon.Polygon object at 0x7f580436b0a0>, 'urban')]
+        
+        elif geometry["type"] == "LineString":  # Add support for LineString
+            #print("yes") (fonctionne)
+            coordinates = geometry["coordinates"] # long\lat
+            line = parse_linestring(coordinates, trans, nx, ny) #LINESTRING (-8198363.904292782 5699247.778158586, ..)
+            geoms.append((line.length, line, label))
+            #print(geoms) #[(135.40650430665715, <shapely.geometry.linestring.LineString object at 0x7fa17b852380>, 'secondary'),
+
+        #elif feat["geometry"]["type"] == "MultiPolygon":
+            #coordinates = geometry["coordinates"]
+            #:
+                #poly = MultiPolygon(
+                  #  [parse_polygon(coords, trans, nx, ny) for coords in coordinates]
+               # )
+                #geoms.append((poly.area, poly, label))
+            #except Exception:
+                #assert 0
 
     # put larger area geometry on the top of list
     geoms.sort(key=lambda x: x[0], reverse=True)
-
+#*******************************************************************************
     # Due to coco not support segmentation with holes.
     # So the exterior will be used as the segmentation
     for _, geom, label in geoms:
+        if isinstance(geom, LineString):
+            geom = geom.buffer(0.001)  # Buffer the LineString to create a thin Polygon
         geom = bbox.intersection(geom).buffer(0)
+        
         if geom.area > 0:
             yield (geom, label)
-
+#*******************************************************************************
 
 def burn_tile(geoms, task, pal, fname, nx=256, ny=256):
     """Burn a tile
@@ -132,16 +165,32 @@ def burn_tile(geoms, task, pal, fname, nx=256, ny=256):
     :param nx: image width
     :param ny: image length
     """
+    
     draws = []
     im = Image.new(mode="RGB", size=(nx, ny), color="#000000")
     draw = ImageDraw.Draw(im)
     for geom, label in geoms:
         color = pal.color(label)
         if task == "segmentation":
+            #print("task segmentation")
             if geom.type == "Polygon":
                 draws.append((list(geom.exterior.coords), color))
-            elif geom.type == "MultiPolygon":
-                draws += [(list(g.exterior.coords), color) for g in geom]
+                #print("its a polygon")
+                #print(draws) [([(0.0, 0.0), (0.0, 255.0), (254.9851306676034, 255.0), (254.9851306676034, 0.0), (0.0, 0.0)], '#ed3a7e')]
+                
+            #elif geom.type == "MultiPolygon":
+                #draws += [(list(g.exterior.coords), color) for g in geom]
+            
+            elif geom.type == "LineString":  # Add support for LineString
+                print("its a linestring")
+                line_coords = list(geom.coords)
+                draws.append((line_coords, color))
+                draw.line(line_coords, fill=color)
+                #draws.append((list(geom.coords), color))
+                #print(draws)
+            #else :
+                #print("il y a une erreur")
+
         elif task == "object detection":
             bbox = bounds_to_bbox(geom.bounds)
             draws.append((bbox, color))
@@ -150,13 +199,20 @@ def burn_tile(geoms, task, pal, fname, nx=256, ny=256):
 
     for idx, (coords, color) in enumerate(draws):
         if task == "segmentation":
-            draw.polygon(coords, fill=color)
+            #if isinstance(coords[0], tuple):  # Check if coords represent a LineString
+            draw.line(coords, fill=color, width=2)  # Draw the line
+            #print("line drawn")
+            #print(coords) [(141.47735855754382, 0.0), (243.844010666767, 64.92511767488423),...]
+            #else:
+                #draw.polygon(coords, fill=color)
         elif task == "object detection":
             draw.line(coords)
 
         yield (idx, label, coords)
 
+
     im.save(fname, "PNG")
+    
 
 
 class geococo(object):

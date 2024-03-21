@@ -116,3 +116,6 @@ def printcfg(cfg):
     import pprint
 
     pprint.pprint(cfg.o2l_cfg.__dict__)
+
+#if __name__ == '__main__':
+    #cli()

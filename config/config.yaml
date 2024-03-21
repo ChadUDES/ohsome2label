@@ -1,24 +1,29 @@
 project:
   name: HD_landuse
-  workspace: ./example_result
-  project_time: 2020-05-18
+  workspace: /home/chad/Desktop/folder/ohsome2label/example_result_roads_test
+  project_time: 2024-03-14
   task: segmentation
 
 osm:
   api: ohsome
   url: https://api.ohsome.org/v1/elements/geometry
-  bboxes: [8.625,49.3711,8.7334,49.4397]
+  bboxes: [-73.70164,45.47775,-73.6379,45.50655]
   tags:
-    - {'label': 'urban', 'key': 'landuse', 'value': 'residential'}
-    - {'label': 'urban', 'key': 'landuse', 'value': 'garages'}
-    - {'label': 'industry', 'key': 'landuse', 'value': 'railway'}
-    - {'label': 'industry', 'key': 'landuse', 'value': 'industrial'}
+    - {'label': 'motorway', 'key': 'highway', 'value': 'motorway'}
+    - {'label': 'secondary', 'key': 'highway', 'value': 'secondary'}
+    - {'label': 'tertiary', 'key': 'highway', 'value': 'tertiary'}
+    #- {'label': 'secondary_link', 'key': 'highway', 'value': 'secondary_link'}
+    #- {'label': 'tertiary_link', 'key': 'highway', 'value': 'tertiary_link'}
+    #- {'label': 'service', 'key': 'highway', 'value': 'service'}
+    #- {'label': 'primary', 'key': 'highway', 'value': 'primary'}
 
-  timestamp: 2019-10-20
-  types: polygon
+    #- {'label': 'residential', 'key': 'highway', 'value': 'residential'}
+
+  timestamp: 2023-01-01
+  types: line
 
 image:
   img_api: bing
   img_url: http://t0.tiles.virtualearth.net/tiles/a{q}.png?g=854&mkt=en-US&token={token}
-  api_token : 'YOUR_TOKEN'
-  zoom: 14
+  api_token : AodB7xAjjC4O-Q7bf7pCTZA6fjvLXGeiYQQ1nn3zljjdTfmggIQiJDT-YWzWtN9Z
+  zoom: 17 

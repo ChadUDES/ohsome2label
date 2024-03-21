@@ -1,0 +1,24 @@
+project:
+  name: HD_landuse
+  workspace: /home/chad/Desktop/folder/ohsome2label/example_building_test 
+  project_time: 2020-05-18
+  task: segmentation
+
+osm:
+  api: ohsome
+  url: https://api.ohsome.org/v1/elements/geometry
+  bboxes: [-73.70164,45.47775,-73.6379,45.50655]
+  tags:
+    - {'label': 'urban', 'key': 'landuse', 'value': 'residential'}
+    - {'label': 'urban', 'key': 'landuse', 'value': 'garages'}
+    - {'label': 'industry', 'key': 'landuse', 'value': 'railway'}
+    - {'label': 'industry', 'key': 'landuse', 'value': 'industrial'}
+
+  timestamp: 2023-01-01
+  types: polygon
+
+image:
+  img_api: bing
+  img_url: http://t0.tiles.virtualearth.net/tiles/a{q}.png?g=854&mkt=en-US&token={token}
+  api_token : AodB7xAjjC4O-Q7bf7pCTZA6fjvLXGeiYQQ1nn3zljjdTfmggIQiJDT-YWzWtN9Z
+  zoom: 17
