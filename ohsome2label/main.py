@@ -4,7 +4,7 @@ import click
 from tqdm import tqdm
 
 from ohsome2label.config import Config, Parser, workspace
-from ohsome2label.label import gen_label
+from ohsome2label.label import gen_label, get_tile_list
 from ohsome2label.overpass import download_overpass
 from ohsome2label.utils import download_osm, download_img
 from ohsome2label.visualize import visualize_combined, visualize_overlay
@@ -54,6 +54,15 @@ def vector(config):
         download_osm(cfg, workspace)
     elif api == "overpass":
         download_overpass(cfg, workspace)
+
+@cli.command(help="Clip osm data into tile contains desired label")
+@click.pass_obj
+def tile(config):
+    cfg = config.o2l_cfg
+    workspace = config.workspace
+    #log.info("Tile the OSM data into given zoom level: {}".format(cfg.zoom))
+    get_tile_list(cfg, workspace)
+
 
 
 @cli.command(help="Generate tile")
@@ -117,5 +126,5 @@ def printcfg(cfg):
 
     pprint.pprint(cfg.o2l_cfg.__dict__)
 
-#if __name__ == '__main__':
-    #cli()
+if __name__ == '__main__':
+    cli()

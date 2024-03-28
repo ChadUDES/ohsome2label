@@ -7,12 +7,14 @@ from geojson import FeatureCollection
 from PIL import Image, ImageDraw
 from shapely.geometry import MultiPolygon, Polygon, box, shape
 from shapely.geometry import LineString
+
 from shapely.strtree import STRtree
 from tqdm import tqdm
 
 from ohsome2label.palette import palette
 from ohsome2label.tile import Bbox, apply_transform, get_bbox, tile_get_transform, xy
 from ohsome2label.utils import get_area
+import tqdm
 
 nx = 256
 ny = 256
@@ -77,9 +79,7 @@ def parse_polygon(coordinates, trans, nx=256, ny=256):
 
     return Polygon(exterior, interiors).buffer(0)
 
-
-from shapely.geometry import LineString
-
+# ajouté chad
 def parse_linestring(coordinates, trans, nx=256, ny=256):
     """parse linestring
 
@@ -126,7 +126,6 @@ def check_topo(feats, tile, nx=256, ny=256):
             #print(geoms) [(1589201.2649204314, <shapely.geometry.polygon.Polygon object at 0x7f580436b0a0>, 'urban')]
         
         elif geometry["type"] == "LineString":  # Add support for LineString
-            #print("yes") (fonctionne)
             coordinates = geometry["coordinates"] # long\lat
             line = parse_linestring(coordinates, trans, nx, ny) #LINESTRING (-8198363.904292782 5699247.778158586, ..)
             geoms.append((line.length, line, label))
@@ -144,7 +143,8 @@ def check_topo(feats, tile, nx=256, ny=256):
 
     # put larger area geometry on the top of list
     geoms.sort(key=lambda x: x[0], reverse=True)
-#*******************************************************************************
+
+# modifié chad*******************************************************************************
     # Due to coco not support segmentation with holes.
     # So the exterior will be used as the segmentation
     for _, geom, label in geoms:
@@ -175,21 +175,16 @@ def burn_tile(geoms, task, pal, fname, nx=256, ny=256):
             #print("task segmentation")
             if geom.type == "Polygon":
                 draws.append((list(geom.exterior.coords), color))
-                #print("its a polygon")
                 #print(draws) [([(0.0, 0.0), (0.0, 255.0), (254.9851306676034, 255.0), (254.9851306676034, 0.0), (0.0, 0.0)], '#ed3a7e')]
                 
             #elif geom.type == "MultiPolygon":
                 #draws += [(list(g.exterior.coords), color) for g in geom]
             
             elif geom.type == "LineString":  # Add support for LineString
-                print("its a linestring")
                 line_coords = list(geom.coords)
-                draws.append((line_coords, color))
+                draws.append((line_coords, color))  
                 draw.line(line_coords, fill=color)
                 #draws.append((list(geom.coords), color))
-                #print(draws)
-            #else :
-                #print("il y a une erreur")
 
         elif task == "object detection":
             bbox = bounds_to_bbox(geom.bounds)
@@ -199,12 +194,8 @@ def burn_tile(geoms, task, pal, fname, nx=256, ny=256):
 
     for idx, (coords, color) in enumerate(draws):
         if task == "segmentation":
-            #if isinstance(coords[0], tuple):  # Check if coords represent a LineString
             draw.line(coords, fill=color, width=2)  # Draw the line
-            #print("line drawn")
             #print(coords) [(141.47735855754382, 0.0), (243.844010666767, 64.92511767488423),...]
-            #else:
-                #draw.polygon(coords, fill=color)
         elif task == "object detection":
             draw.line(coords)
 
@@ -213,6 +204,90 @@ def burn_tile(geoms, task, pal, fname, nx=256, ny=256):
 
     im.save(fname, "PNG")
     
+
+def get_tile_list(cfg, workspace):
+    """Get potential label list according to the osm geojson
+
+    :param cfg: ohsome2label config
+    :param workspace: workspace
+    """
+    tile_dir = workspace.tile
+    geoms = []
+    feats = {}
+    tile_feats = {}
+
+    # open downloaded geojson file
+    if cfg.api == "ohsome":
+        for tag in cfg.tags:
+            fname = "{lab}_{k}_{v}.geojson".format(
+                lab=tag["label"], k=tag["key"], v=tag["value"]
+            )
+            fpath = os.path.join(workspace.raw, fname)
+            # get valid tile
+            with open(fpath, encoding="utf-8") as f:
+                data = geojson.loads(f.read().replace("'", ""))
+                features = data["features"]
+                for feature in features:
+                    geom = shape(feature["geometry"])
+                    geoms.append(geom)
+                    feature["properties"]["label"] = tag["label"]
+                    feats[geom.to_wkb()] = feature
+    elif cfg.api == "overpass":
+        fname = "overpass_query.geojson"
+        fpath = os.path.join(workspace.raw, fname)
+        with open(fpath, encoding="utf-8") as f:
+            data = geojson.loads(f.read().replace("'", ""))
+            features = data["features"]
+            for feature in features:
+                for tag in cfg.tags:
+                    key = tag.get("key", "")
+                    value = tag.get("value", "")
+                    if value == "" and key in feature["properties"]:
+                        geom = shape(feature["geometry"])
+                        geoms.append(geom)
+                        feature["properties"]["label"] = tag["label"]
+                        feats[geom.to_wkb()] = feature
+                        break
+                    elif feature["properties"].get(key, "") == value:
+                        geom = shape(feature["geometry"])
+                        geoms.append(geom)
+                        feature["properties"]["label"] = tag["label"]
+                        feats[geom.to_wkb()] = feature
+                        break
+
+    tree = STRtree(geoms)
+
+    # clip by tile into small tile geojson
+    for t in cfg.tiles:
+        _box = box(*get_bbox(t))
+        r = tree.query(_box)
+
+        if len(r) != 0:
+            tile = tile_feats.get(t, [])
+            for g in r:
+                tile.append(feats[g.to_wkb()])
+                tile_feats[t] = tile
+
+    # free the variable for gc
+    del feats
+
+    list_path = os.path.join(workspace.other, "tile_list")
+    with open(list_path, "w", encoding="utf-8") as f:
+        for imgIdx, tile in enumerate(tqdm.tqdm(tile_feats)):
+            feats = tile_feats[tile]
+
+            # store geojson
+            fc = FeatureCollection(feats)
+            tile_name = "{0.z}.{0.x}.{0.y}".format(tile)
+            f.write(tile_name + "\n")
+            tile_path = os.path.join(tile_dir, tile_name + ".geojson")
+            with open(tile_path, "w", encoding="utf-8") as gj:
+                try:
+                    geojson.dump(fc, gj)
+                except Exception:
+                    log.error("{}.geojson dump wrong!".format(tile_name))
+                    assert 0
+
 
 
 class geococo(object):

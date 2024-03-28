@@ -1,25 +1,32 @@
 project:
   name: HD_landuse
-  workspace: /home/chad/Desktop/folder/ohsome2label/example_result_roads_test
-  project_time: 2024-03-14
+  workspace: /home/chad/Desktop/folder/ohsome2label/example_result_roads_dectectron_plus
+  project_time: 2024-03-28
   task: segmentation
 
 osm:
   api: ohsome
   url: https://api.ohsome.org/v1/elements/geometry
-  bboxes: [-73.70164,45.47775,-73.6379,45.50655]
+  bboxes: [-73.88560,45.42704,-73.50503,45.62282]
   tags:
     - {'label': 'motorway', 'key': 'highway', 'value': 'motorway'}
+    - {'label': 'motorway_link', 'key': 'highway', 'value': 'motorway_link'}
     - {'label': 'secondary', 'key': 'highway', 'value': 'secondary'}
     - {'label': 'tertiary', 'key': 'highway', 'value': 'tertiary'}
-    #- {'label': 'secondary_link', 'key': 'highway', 'value': 'secondary_link'}
-    #- {'label': 'tertiary_link', 'key': 'highway', 'value': 'tertiary_link'}
+    - {'label': 'secondary_link', 'key': 'highway', 'value': 'secondary_link'}
+    - {'label': 'tertiary_link', 'key': 'highway', 'value': 'tertiary_link'}
     #- {'label': 'service', 'key': 'highway', 'value': 'service'}
-    #- {'label': 'primary', 'key': 'highway', 'value': 'primary'}
+    - {'label': 'primary', 'key': 'highway', 'value': 'primary'}
+    - {'label': 'primary_link', 'key': 'highway', 'value': 'primary_link'}
+    - {'label': 'trunk', 'key': 'highway', 'value': 'trunk'}
+    - {'label': 'trunk_link', 'key': 'highway', 'value': 'trunk_link'}
+    - {'label': 'unclassified', 'key': 'highway', 'value': 'unclassified'}
+    - {'label': 'residential', 'key': 'highway', 'value': 'residential'}
 
-    #- {'label': 'residential', 'key': 'highway', 'value': 'residential'}
+         
 
-  timestamp: 2023-01-01
+
+  timestamp: 2023-05-01
   types: line
 
 image:

@@ -18,8 +18,10 @@ areaKeys.json
 build
 tmp_code
 !example_result/*/*
-venv2
+venv112
+
 example_result_roads_test
 example_result_roads
 example_result
 example_building_test
+example_result_roads_dectectron_plus
